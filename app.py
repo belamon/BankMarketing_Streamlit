@@ -1,62 +1,84 @@
 import streamlit as st
-import pandas as pd 
+import pandas as pd
 import joblib
 
-#load the model 
-model = joblib.load("LGMBbest_modelexport.pkl")
+# Load the pipeline (preprocessor + model)
+pipeline = joblib.load("LGMBbest_modelexport1.pkl")
 
-#Title of the App
+# Title of the app
 st.title("Bank Marketing Campaign Prediction")
 
-#Sidebar for user input 
+# Sidebar for user input
 st.sidebar.header("Customer Input Features")
 
-#Function to get use input from the sidebar 
-
+# Function to get user input
 def get_user_input():
-    age = st.sidebar.slider("Age", 18, 100, 30)
-    job = st.sidebar.selectbox("Job", ["white-collar", "blue-collar", "retired", "self-employed", "not-working", "unknown"])
-    balance = st.sidebar.number_input("Account Balance ($)", min_value = -5000, max_value=2000, value=0)
-    housing = st.sidebar.selectbox("Has Housing Loan?", ["Yes", "No"])
-    loan = st.sidebar.selectbox("Has Loan?", ["Yes", "No"])
-    contact = st.sidebar.selectbox("Contact Type", ["Celullar", "Telephone", "Unknown"])
-    month = st.sidebar.selectbox("Last Conctact", ["Jan", "Feb", "March", "Apr", "May", "Jun","Jul", "Aug", "Sep", "Oct", "Nov", "Dec"])
-    campaign = st.sidebar.slider("Mount of Contact Performed", min_value=1, max_value=4000, value=0)
-    poutcome = st.sidebar.selectbox("Previous Campaign Outcome", ["Successful", "Non-Successful", "Unknown"])
+    # Collect numerical inputs
+    age = st.sidebar.slider("Age", 18, 100, 30)  
+    balance = st.sidebar.number_input("Account Balance ($)",min_value= -6847,
+    max_value= 66663,
+    value=0,
+    step=100)  
+    campaign = st.sidebar.slider("Number of Contacts", 1, 3400, 15)  
 
-    #input dictionary 
+    # Collect categorical inputs
+    job = st.sidebar.selectbox(
+        "Job Type",
+        ["white-collar ", "blue-collar", "retired ", "self-employed ", "not-working ", "unknown"])
+    housing = st.sidebar.selectbox("Has Housing Loan?", ["yes", "no"])  
+    loan = st.sidebar.selectbox("Has Personal Loan?", ["yes", "no"]) 
+    contact = st.sidebar.selectbox("Contact Type", ["cellular", "telephone", "unknown"])  
+    month = st.sidebar.selectbox(
+        "Last Contact Month",
+        ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"],  
+    )
+    poutcome = st.sidebar.selectbox(
+        "Previous Campaign Outcome",
+        ["success", "not-success", "unknown"], 
+    )
+
+    # Create input data as a dictionary
     input_data = {
         "age": age,
-        "job": job,
         "balance": balance,
+        "campaign": campaign,
+        "job": job,
         "housing": housing,
         "loan": loan,
         "contact": contact,
         "month": month,
-        "campaign": campaign,
-        "poutcome": poutcome
-
+        "poutcome": poutcome,
     }
 
+    # Return as DataFrame
     return pd.DataFrame([input_data])
 
-#Get the user inout 
+# Get user input
 input_df = get_user_input()
 
-#Display the user input 
+# Debugging: Display the input DataFrame
 st.subheader("Customer Input Features")
 st.write(input_df)
 
-#Make prediction 
+# Prediction
 if st.button("Predict"):
-    prediction = model.predict(input_df)
-    prediction_proba = model.predict_proba(input_df)
+    try:
+        # Pass the raw input to the pipeline
+        prediction = pipeline.predict(input_df)  # Encoded output (0 or 1)
+        prediction_proba = pipeline.predict_proba(input_df)  # Probabilities
 
-    #Display prediction result 
-    st.subheader("Prediction")
-    st.write("The customer wll subscribe to a term deposit" if prediction[0] == "yes" else "The customer will not subscribe to a term deposit")
+        # Display prediction result
+        st.subheader("Prediction")
+        st.write(
+            "The customer will likely to subscribe to a term deposit"
+            if prediction[0] == 1
+            else "The customer will likely not subscribe to a term deposit"
+        )
 
-    st.subheader("Prediction Probability")
-    st.write(f"Probability of subscribing :{prediction_proba[0][1]:.2f}")
-    st.write(f"Probability of not subscribing: {prediction_proba[0][0]:.2f}")
+        # Display prediction probabilities
+        st.subheader("Prediction Probability")
+        st.write(f"Probability of subscribing: {prediction_proba[0][1]:.2f}")
+        st.write(f"Probability of not subscribing: {prediction_proba[0][0]:.2f}")
 
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
